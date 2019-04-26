@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+    }
+    canvas {
+      display: inline-block;
+      padding: 10px;
+    }
+  </style>
+  <title>Document</title>
+</head>
+
+<body>
+  <canvas id='canvas' width="300" height="300"></canvas>
+  <canvas id='canvas2' width="300" height="300"></canvas>
+  <canvas id='canvas3' width="300" height="300"></canvas>
+  <canvas id='canvas4' width="300" height="300"></canvas>
+  <canvas id='canvas5' width="300" height="300"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const canvas2 = document.getElementById('canvas2');
+    const canvas3 = document.getElementById('canvas3');
+    const canvas4 = document.getElementById('canvas4');
+    const canvas5 = document.getElementById('canvas5');
+
+
+    const context = canvas.getContext('2d');
+    const worker = new Worker("./worker.js");
+    const image = new Image();
+
+    function fupian() {
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = 255 - data[i];
+        data[i + 1] = 255 - data[i + 1];
+        data[i + 2] = 255 - data[i + 2];
+      }
+      context.putImageData(imageData, 0, 0);
+    }
+
+    function heibai() {
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const average = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        data[i] = average;
+        data[i + 1] = average;
+        data[i + 2] = average;
+      }
+      context.putImageData(imageData, 0, 0);
+    }
+
+    image.src = "./1.jpg";
+    image.onload = function () {
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const sourceImageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      worker.postMessage({
+        type: 'fudiao',
+        imageData: sourceImageData
+      });
+      worker.postMessage({
+        type: 'heibai',
+        imageData: sourceImageData
+      });
+      worker.postMessage({
+        type: 'fupian',
+        imageData: sourceImageData
+      });
+      worker.postMessage({
+        type: 'gaosi',
+        imageData: sourceImageData
+      });
+      worker.onmessage = (event) => {
+        console.log(event)
+        switch (event.data.type) {
+          case 'fudiao':
+            canvas2.getContext('2d').putImageData(event.data.imageData, 0, 0);
+            break;
+          case 'heibai':
+            canvas3.getContext('2d').putImageData(event.data.imageData, 0, 0);
+            break;
+          case 'fupian':
+            canvas4.getContext('2d').putImageData(event.data.imageData, 0, 0);
+            break;
+          case 'gaosi':
+            canvas5.getContext('2d').putImageData(event.data.imageData, 0, 0);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+
+  </script>
+</body>
+
+</html>
