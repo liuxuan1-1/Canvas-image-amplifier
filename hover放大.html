@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <style>
+    *{
+      padding: 0;
+      margin: 0;
+    }
+  </style>
+  <title>Document</title>
+</head>
+
+<body>
+  <canvas id='canvas' width="500" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const image = new Image();
+    let imageData;
+    let magnifyRectangle = {
+      width: 300,
+      height: 300,
+    };
+    let magnifycationScale = 2.0;
+    let magnifyGlassRadius = 150;
+
+    // 还原上一次图像覆盖位置
+    function eraseMagnifyingGlass() {
+      if (imageData != null) {
+        context.putImageData(imageData, magnifyRectangle.x - magnifyGlassRadius, magnifyRectangle.y - magnifyGlassRadius);
+      }
+    }
+
+    function drawMagnifyGlass(mouse) {
+      let scaledMagnifyRectangle = null;
+      magnifyRectangle.x = mouse.x;
+      magnifyRectangle.y = mouse.y;
+      imageData = context.getImageData(
+        magnifyRectangle.x - magnifyGlassRadius,
+        magnifyRectangle.y - magnifyGlassRadius,
+        magnifyRectangle.width,
+        magnifyRectangle.height,
+      )
+
+      context.save();
+      scaledMagnifyRectangle = {
+        width: magnifyRectangle.width * magnifycationScale,
+        height: magnifyRectangle.height * magnifycationScale,
+      }
+      
+      // 画圆形形状
+      setClip();
+      context.drawImage(canvas,
+        magnifyRectangle.x - magnifyGlassRadius, magnifyRectangle.y - magnifyGlassRadius,
+        magnifyRectangle.width, magnifyRectangle.height,
+        magnifyRectangle.x - 2 * magnifyGlassRadius, magnifyRectangle.y - 2 * magnifyGlassRadius,
+        scaledMagnifyRectangle.width,
+        scaledMagnifyRectangle.height
+      )
+
+      context.restore();
+    }
+
+    function setClip() {
+      context.beginPath();
+      context.arc(magnifyRectangle.x, magnifyRectangle.y, magnifyGlassRadius, 0, Math.PI * 2, false);
+      context.closePath();
+      context.clip();
+    }
+
+    canvas.onmousemove = function (e) {
+      eraseMagnifyingGlass();
+      drawMagnifyGlass({
+        x: e.clientX,
+        y: e.clientY
+      });
+    }
+
+
+    image.src = "./1.jpg";
+    image.onload = function () {
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    }
+
+  </script>
+</body>
+
+</html>

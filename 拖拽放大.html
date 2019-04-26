@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <canvas id='canvas' width="500" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const image = new Image();
+    let imageData;
+
+    // 创建一个等同于canvas大小的图像信息
+    let imageDataCopy = context.createImageData(canvas.width, canvas.height);
+
+    // 鼠标位置信息
+    let mousedown = {};
+
+    // 正方形框
+    let rubberbandRectangle = {};
+    let dragging = false;
+
+
+    // 计算鼠标相对于canvas的位置
+    function windowToCanvas(canvas, x, y) {
+      const canvasRectangle = canvas.getBoundingClientRect();
+      return {
+        x: x - canvasRectangle.left,
+        y: y - canvasRectangle.top
+      }
+    }
+
+    // 复制图像像素信息，imageData为连续的Uint8ClampedArray（8位无符号整形固定数组）
+    // 每4个项表示一个像素点，r，g，b，a，操作每个像素点的alpha值将其变为一半
+    function copyCanvasPixels() {
+      for(let i = 0; i < 3; i++) {
+        imageDataCopy.data[i] = imageData.data[i];
+      }
+
+      for (let i = 3; i < imageData.data.length - 4; i += 4) {
+        imageDataCopy.data[i] = imageData.data[i] / 2;
+        imageDataCopy.data[i + 1] = imageData.data[i + 1];
+        imageDataCopy.data[i + 2] = imageData.data[i + 2];
+        imageDataCopy.data[i + 3] = imageData.data[i + 3];
+      }
+    }
+
+    function captureCanvasPixels() {
+      imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      copyCanvasPixels();
+    }
+
+    function restoreRubberbandPixels() {
+      // imageData中的width和height指的是canvas所含设备像素数量，例如有一个200*200像素的canvas
+      // 那么就总共含有4w个css像素点，若是浏览器在横竖两个方向都有两个设备像素来表示每个css像素的话就有
+      // 16w个（400*400）个像素点
+      const deviceWidth = imageData.width / canvas.width;
+      const deviceHeight = imageData.height / canvas.height;
+
+      context.putImageData(imageData, 0, 0);
+
+      context.putImageData(imageDataCopy, 0, 0,
+      rubberbandRectangle.left + context.lineWidth,
+      rubberbandRectangle.top + context.lineWidth,
+      (rubberbandRectangle.width - 2 * context.lineWidth) * deviceWidth,
+      (rubberbandRectangle.height - 2 * context.lineWidth) * deviceHeight
+      );
+    }
+
+    function setRubberbandRectangle(x, y) {
+      rubberbandRectangle.left = Math.min(x, mousedown.x);
+      rubberbandRectangle.right = Math.min(y, mousedown.y);
+      rubberbandRectangle.width = Math.abs(x - mousedown.x);
+      rubberbandRectangle.height = Math.abs(y - mousedown.y);
+    }
+
+    function drawRubberband() {
+      context.strokeRect(
+        rubberbandRectangle.left + context.lineWidth,
+        rubberbandRectangle.top + context.lineWidth,
+        rubberbandRectangle.width - 2 + context.lineWidth,
+        rubberbandRectangle.height - 2 + context.lineWidth,
+      )
+    }
+
+    function rubberbandStart(x, y) {
+      mousedown.x = x;
+      mousedown.y = y;
+
+      rubberbandRectangle.left = mousedown.x;
+      rubberbandRectangle.top = mousedown.y;
+      rubberbandRectangle.width = 0;
+      rubberbandRectangle.height = 0;
+
+      dragging = true;
+      captureCanvasPixels();
+    }
+
+    function rubberbandStretch(x, y) {
+      // 没拖动时不画线
+      if (rubberbandRectangle.width > 2 * context.lineWidth && rubberbandRectangle.height > 2 * context.lineWidth) {
+        imageData !== undefined && restoreRubberbandPixels();
+      }
+
+      setRubberbandRectangle(x, y);
+
+      if (rubberbandRectangle.width > 2 * context.lineWidth && rubberbandRectangle.height > 2 * context.width) {
+        drawRubberband();
+      }
+    }
+
+    function rubberbandEnd() {
+      context.putImageData(imageData, 0, 0);
+      context.drawImage(canvas,
+        rubberbandRectangle.left + context.lineWidth * 2,
+        rubberbandRectangle.top + context.lineWidth * 2,
+        rubberbandRectangle.width - 4 * context.lineWidth,
+        rubberbandRectangle.height - 4 * context.lineWidth,
+        0, 0, canvas.width, canvas.height
+      )
+      dragging = false;
+      imageData = undefined;
+    }
+
+    canvas.onmousedown = function(e) {
+      const loc = windowToCanvas(canvas, e.clientX, e.clientY);
+      e.preventDefault();
+      rubberbandStart(loc.x, loc.y);
+    }
+
+    canvas.onmousemove = function (e) {
+      let loc;
+
+      if (dragging) {
+        loc = windowToCanvas(canvas, e.clientX, e.clientY);
+        rubberbandStretch(loc.x, loc.y);
+      }
+    }
+
+    canvas.onmouseup = function (params) {
+      rubberbandEnd();
+    }
+
+    image.src = "./1.jpg";
+    image.onload = function () {
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    }
+
+    context.strokeStyle = 'navy';
+    context.lineWidth = 1.0;
+  </script>
+</body>
+</html>
